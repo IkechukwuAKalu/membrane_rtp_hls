@@ -9,7 +9,7 @@ defmodule MembraneRtpHls.Pipeline do
   @dynamic_audio_type 127
 
   @impl true
-  def handle_init([port: port, host: host, storage_type: storage_type]) do
+  def handle_init(port: port, host: host, storage_type: storage_type) do
     children = %{
       app_source: %Membrane.Element.UDP.Source{
         local_port_no: port,
