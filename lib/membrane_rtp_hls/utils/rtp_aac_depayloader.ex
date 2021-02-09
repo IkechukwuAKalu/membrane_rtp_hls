@@ -46,7 +46,7 @@ defmodule MembraneRtpHls.Utils.RtpAacDepayloader do
   end
 
   @impl true
-  def handle_caps(:input, caps, _ctx, state) do
+  def handle_caps(:input, _caps, _ctx, state) do
     caps = %AAC{profile: state.profile, sample_rate: state.sample_rate, channels: state.channels}
     {{:ok, caps: {:output, caps}}, state}
   end
