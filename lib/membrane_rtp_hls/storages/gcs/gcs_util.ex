@@ -70,7 +70,7 @@ defmodule MembraneRtpHls.Storages.GCS.GcsUtil do
 
   # Returns a list of headers for making requests to GCS
   defp headers do
-    {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/cloud-platform")
+    {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/devstorage.read_write")
 
     [
       {"Content-Type", "application/json"},
