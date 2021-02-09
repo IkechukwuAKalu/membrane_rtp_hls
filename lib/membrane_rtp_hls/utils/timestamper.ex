@@ -1,4 +1,11 @@
 defmodule MembraneRtpHls.Utils.Timestamper do
+  @moduledoc """
+  This module provides a Timestamper element for the
+  video and audio streams.
+
+  NOTE: This module was copied from
+  https://github.com/membraneframework/membrane_rtp_plugin/pull/9/commits/693a28d8e7349adf331a61ace0ee099b0f65d771
+  """
   use Membrane.Filter
   use Membrane.Log, tags: :timestamper
 

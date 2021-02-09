@@ -1,4 +1,7 @@
 defmodule MembraneRtpHls.Pipeline do
+  @moduledoc """
+  The Pipeline module.
+  """
   require Logger
 
   use Membrane.Pipeline
@@ -8,6 +11,14 @@ defmodule MembraneRtpHls.Pipeline do
   @dynamic_video_type 96
   @dynamic_audio_type 127
 
+  @doc """
+  This function initializes the Pipeline.
+
+  This function accepts a keyword list. The params are described below,
+    - port: this is the port to listen for the UDP source. Example 5000
+    - host: this is the host to connect for the UDP source. Example {127, 0, 0, 1}
+    - storage_type: this is the storage type to use. Valid types are - :file, :gcs
+  """
   @impl true
   def handle_init(port: port, host: host, storage_type: storage_type) do
     children = %{
@@ -23,7 +34,7 @@ defmodule MembraneRtpHls.Pipeline do
         },
         custom_depayloaders: %{
           :H264 => Membrane.RTP.H264.Depayloader,
-          :AAC => %MembraneRtpHls.Utils.AacRtpDepayloader{channels: 1}
+          :AAC => %MembraneRtpHls.Utils.RtpAacDepayloader{channels: 1}
         }
       },
       hls: %Membrane.HTTPAdaptiveStream.Sink{
@@ -46,6 +57,7 @@ defmodule MembraneRtpHls.Pipeline do
     {{:ok, spec: spec}, %{}}
   end
 
+  # Receives and processes notifications from the `rtp` element for payload_type 96 (H264)
   @impl true
   def handle_notification({:new_rtp_stream, ssrc, @dynamic_video_type}, :rtp, _ctx, state) do
     children = %{
@@ -77,6 +89,7 @@ defmodule MembraneRtpHls.Pipeline do
     {{:ok, spec: spec}, state}
   end
 
+  # Receives and processes notifications from the `rtp` element for payload_type 127 (AAC)
   def handle_notification({:new_rtp_stream, ssrc, @dynamic_audio_type}, :rtp, _ctx, state) do
     children = %{
       # TODO: remove when moved to the RTP bin
@@ -105,6 +118,10 @@ defmodule MembraneRtpHls.Pipeline do
     {{:ok, spec: spec}, state}
   end
 
+  # Receives notifications from the `rtp` element that has not been defined.
+  # That is, any payload_type that isn't 96 or 127.
+  # This function sends it to a fake sink which doesn't really do anything with it.
+  @impl true
   def handle_notification({:new_rtp_stream, ssrc, payload_type}, :rtp, _ctx, state) do
     Logger.warn("Unsupported stream connected. Element #{payload_type}")
 
@@ -122,17 +139,22 @@ defmodule MembraneRtpHls.Pipeline do
     {{:ok, spec: spec}, state}
   end
 
+  # Receives notifications about the connection to the UDP source
+  @impl true
   def handle_notification({:connection_info, _, _}, :app_source, _ctx, state) do
     Logger.info("Connected to UDP source")
     {:ok, state}
   end
 
+  # Recives notifications that haven't been handled
+  @impl true
   def handle_notification(notification, element, _ctx, state) do
     Logger.info("Default notification handler #{inspect(element)}: #{inspect(notification)}")
 
     {:ok, state}
   end
 
+  # Returns the appropriate module struct for the selected storage type
   defp stream_storage(type) do
     case type do
       :file ->

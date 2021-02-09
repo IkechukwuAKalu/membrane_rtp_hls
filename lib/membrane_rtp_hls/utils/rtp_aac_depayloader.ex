@@ -1,5 +1,9 @@
-defmodule MembraneRtpHls.Utils.AacRtpDepayloader do
+defmodule MembraneRtpHls.Utils.RtpAacDepayloader do
+  @moduledoc """
+  This module provides a RTP AAC depayloader.
+  """
   use Membrane.Filter
+
   alias Membrane.Buffer
   alias Membrane.AAC
 

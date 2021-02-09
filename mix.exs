@@ -34,7 +34,6 @@ defmodule MembraneRtpHls.MixProject do
       # RTP related
       {:membrane_rtp_plugin, "~> 0.5.0"},
       {:ex_libsrtp, "~> 0.1.0"},
-      {:membrane_rtp_aac_plugin, "~> 0.2.0-alpha"},
       {:membrane_rtp_h264_plugin, "~> 0.4.0"},
       # Membrane utility related
       {:membrane_element_tee, "~> 0.4.1"},
