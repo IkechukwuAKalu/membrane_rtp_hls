@@ -12,6 +12,26 @@ defmodule MembraneRtpHls.Pipeline do
   @dynamic_audio_type 127
 
   @doc """
+  Custom function to initialize a Pipeline
+  """
+  @spec custom_initialize(keyword) :: {:ok, pid}
+  def custom_initialize(opts) do
+    {:ok, pid} = __MODULE__.start_link(opts)
+    Membrane.Pipeline.play(pid)
+
+    {:ok, pid}
+  end
+
+  @doc """
+  Custom function to stop a Pipeline
+  """
+  @spec custom_destroy(pid) :: :ok
+  def custom_destroy(pid) do
+    Membrane.Pipeline.stop(pid)
+    :ok
+  end
+
+  @doc """
   This function initializes the Pipeline.
 
   This function accepts a keyword list. The params are described below,

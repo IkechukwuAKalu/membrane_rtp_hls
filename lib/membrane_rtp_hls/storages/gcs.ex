@@ -11,21 +11,19 @@ defmodule MembraneRtpHls.Storages.GCS do
   alias Membrane.HTTPAdaptiveStream.Storages.GenServerStorage
   alias MembraneRtpHls.Storages.GCS.GcsUtil
 
-
   @spec start_link(keyword) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(opts \\ []) when is_list(opts) do
     opts = Keyword.merge(opts, name: __MODULE__)
 
-    GenServer.start_link(__MODULE__, nil, opts)
+    GenServer.start_link(__MODULE__, opts, opts)
   end
 
   @impl true
-  @spec init(any) :: {:ok, %{bucket: binary, folder: binary}}
-  def init(_) do
-    Logger.info("Initializing GCS process")
+  @spec init(keyword) :: {:ok, %{bucket: binary, folder: binary}}
+  def init(args) do
+    state = %{bucket: args[:bucket], folder: args[:folder]}
 
-    state = %{bucket: "membrane_streams", folder: "test"}
-
+    Logger.info("GCS process has been Initialized")
     {:ok, state}
   end
 
