@@ -40,11 +40,15 @@ defmodule MembraneRtpHls.Pipeline do
     - storage_type: this is the storage type to use. Valid types are - :file, :gcs
   """
   @impl true
-  def handle_init(port: port, host: host, storage_type: storage_type) do
+  def handle_init(opts) do
+    udp_port = opts[:port]
+    udp_host = opts[:host]
+    storage_type = opts[:storage_type]
+
     children = %{
       app_source: %Membrane.Element.UDP.Source{
-        local_port_no: port,
-        local_address: host,
+        local_port_no: udp_port,
+        local_address: udp_host,
         recv_buffer_size: 500_000
       },
       rtp: %Membrane.RTP.SessionBin{

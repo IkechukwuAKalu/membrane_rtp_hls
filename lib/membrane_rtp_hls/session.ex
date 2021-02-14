@@ -15,28 +15,40 @@ defmodule MembraneRtpHls.Session do
 
   @spec start_link(any) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(args) do
-    Supervisor.start_link(__MODULE__, args, name: __MODULE__)
+    name = args[:name] || __MODULE__
+
+    Supervisor.start_link(__MODULE__, args, name: name)
   end
 
   @impl true
   @spec init(keyword) :: any
-  def init(args) do
+  def init(opts) do
     # GCS process
     default_gcs_bucket = Application.get_env(:membrane_rtp_hls, :gcs_bucket)
-    passed_gcs_opts = Keyword.get(args, :gcs_opts, [])
+    passed_gcs_opts = Keyword.get(opts, :gcs_opts, [])
     gcs_opts = Keyword.merge([bucket: default_gcs_bucket, folder: "default"], passed_gcs_opts)
 
     # Pipeline process
-    passed_pipeline_opts = Keyword.get(args, :pipeline_opts, [])
+    passed_pipeline_opts = Keyword.get(opts, :pipeline_opts, [])
     pipeline_opts = Keyword.merge([storage_type: :file], passed_pipeline_opts)
 
-    children = [
-      {MembraneRtpHls.Storages.GCS, gcs_opts},
+    default_children = [
       %{
         id: Pipeline,
         start: {Pipeline, :custom_initialize, [pipeline_opts]}
       }
     ]
+
+    children =
+      pipeline_opts[:storage_type]
+      |> case do
+        :gcs ->
+          [{MembraneRtpHls.Storages.GCS, gcs_opts}]
+
+        _ ->
+          []
+      end
+      |> Kernel.++(default_children)
 
     Supervisor.init(children, strategy: :one_for_one)
   end

@@ -3,17 +3,24 @@ defmodule MembraneRtpHls.Application do
   This is the application entry moudle.
 
   It starts a Dynamic Supervisor which adds children (stream sessions)
-  to it, or removes from it
+  to it, or removes from it. It also starts a key-value store - this KV
+  implementation can be replaced with any preferred tool.
   """
   use Application
 
   require Logger
 
+  alias MembraneRtpHls.Utils.KvStore
+  alias MembraneRtpHls.Utils.AddrPort
+
   @dynamic_supervisor MembraneRtpHls.DynamicSupervisor
+  @store_process KvStore.process_name()
 
   @impl true
+  @spec start(any, any) :: {:error, any} | {:ok, pid}
   def start(_type, _args) do
     children = [
+      {KvStore, [name: @store_process]},
       {DynamicSupervisor, strategy: :one_for_one, name: @dynamic_supervisor}
     ]
 
@@ -21,43 +28,81 @@ defmodule MembraneRtpHls.Application do
   end
 
   @doc """
-  Creates a new Pipeline session
-  """
-  @spec new_session(keyword) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
-  def new_session(opts) do
-    child_spec = {MembraneRtpHls.Session, opts}
+  Starts a new Pipeline Session Process.
 
-    DynamicSupervisor.start_child(@dynamic_supervisor, child_spec)
+  param `opts` should be of the format below:
+    [
+      pipeline_opts: [
+        port: udp_port,
+        host: udp_host,
+        storage_type: :file | :gcs
+      ],
+      gcs_opts: [
+        bucket: bucket_name,
+        folder: folder_name
+      ]
+    ]
+  NOTE: The `gcs_opts` is only used when the storage type is :gcs
+  """
+  @spec start_session(keyword, atom) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
+  def start_session(opts, session_process) do
+    udp_host = opts[:pipeline_opts][:host]
+    udp_port = opts[:pipeline_opts][:port]
+
+    if is_nil(udp_host) or is_nil(udp_port) do
+      raise %ArgumentError{message: "UDP host and port need to be specified"}
+    end
+
+    if AddrPort.in_use?(@store_process, session_process, udp_host, udp_port) do
+      Logger.error("The UDP address and port are already in use")
+      {:error, :eaddrinuse}
+    else
+      opts
+      |> Keyword.merge(name: session_process)
+      |> do_start_child()
+    end
+  end
+
+  # This starts the session as a child of the dynamic supervisor
+  defp do_start_child(opts) do
+    udp_host = opts[:pipeline_opts][:host]
+    udp_port = opts[:pipeline_opts][:port]
+    session_process = opts[:name]
+
+    child_spec = %{
+      id: session_process,
+      start: {MembraneRtpHls.Session, :start_link, [opts]},
+      restart: :transient,
+      type: :supervisor
+    }
+
+    case DynamicSupervisor.start_child(@dynamic_supervisor, child_spec) do
+      :ignore ->
+        :ignore
+
+      {:error, message} = result ->
+        Logger.error("Dynamic supervisor error: #{inspect(message)}")
+        result
+
+      {:ok, _} = result ->
+        AddrPort.register(@store_process, session_process, udp_host, udp_port)
+        result
+
+      {:ok, _, _} = result ->
+        AddrPort.register(@store_process, session_process, udp_host, udp_port)
+        result
+    end
   end
 
   @doc """
-  Creates a new pipeline session listening on a random port
+  Stops a Pipeline Session Process.
+
+  param `session_process` is the process id/name for the Session Supervisor
   """
-  @spec new_session :: any
-  def new_session do
-    port = 5000
+  @spec stop_session(atom, any) :: :ok
+  def stop_session(session_process, reason \\ :normal) do
+    :ok = Supervisor.stop(session_process, reason)
 
-    [
-      gcs_opts: [bucket: "membrane_streams", folder: "new_aa"],
-      pipeline_opts: [port: port, host: {127, 0, 0, 1}, storage_type: :file]
-    ]
-    |> new_session()
-    |> case do
-      {:ok, _} ->
-        Logger.info("New session added to Dynamic Supervisor")
-        port
-
-      {:ok, _, _} ->
-        Logger.info("New session added to Dynamic Supervisor")
-        port
-
-      reason ->
-        reason = inspect(reason)
-
-        Logger.error(reason)
-        {:error, reason}
-    end
-
-    port
+    AddrPort.unregister(@store_process, session_process)
   end
 end
