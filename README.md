@@ -6,6 +6,9 @@ Currently, the major addition is the use of [Google Cloud Storage (GCS)](https:/
 
 The file system storage option is still available.
 
+## Generating test Streams
+To generate test streams, you can run the `streamer.sh` shell script. It uses [GStreamer](https://gstreamer.freedesktop.org) to achieve this. It sends streams on the localhost (127.0.0.1) and to a port (`5000` by default). You can either use the defalut port or specify your own port. To specify your own port,
+run `sh streamer.sh [PORT]`. Example: `sh streamer.sh 8000`
 
 More documentation coming up for setup, etc
 
